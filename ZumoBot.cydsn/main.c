@@ -60,19 +60,36 @@ int main()
     UART_1_Start();
     Systick_Start();
     
+    
     ADC_Battery_Start();        
 
     int16 adcresult =0;
     float volts = 0.0;
-
+    
+    
     printf("\nBoot\n");
 
-    //BatteryLed_Write(1); // Switch led on 
-    BatteryLed_Write(0); // Switch led off 
+    BatteryLed_Write(1); // Switch led on 
+    //BatteryLed_Write(0); // Switch led off 
     //uint8 button;
     //button = SW1_Read(); // read SW1 on pSoC board
     // SW1_Read() returns zero when button is pressed
     // SW1_Read() returns one when button is not pressed
+    
+    motor_start();
+    /*motor_forward(100,1000);
+    
+    //move motors in opposite directions
+    MotorDirLeft_Write(1);      // set LeftMotor backwards mode
+    MotorDirRight_Write(0);     // set RightMotor forward mode
+    PWM_WriteCompare1(100); 
+    PWM_WriteCompare2(100); 
+    CyDelay(10000);*/
+    
+    
+    //motor_turn(-100,256,100);
+    //motor_forward(100,1000);
+    motor_stop();
 
     for(;;)
     {
@@ -82,13 +99,24 @@ int main()
             adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
             // convert value to Volts
             // you need to implement the conversion
+            volts = (float) (adcresult * 5) / 4096 * 1.5;
             
             // Print both ADC results and converted value
-            printf("%d %f\r\n",adcresult, volts);
+            printf("%d %fV\r\n",adcresult, volts);
         }
+        
+        if(volts < 4.0){
+            Beep(100, 255);
+            CyDelay(1000);
+            ADC_Battery_Stop();
+        }
+        
+        
         CyDelay(500);
         
+        
     }
+    
  }   
 #endif
 
