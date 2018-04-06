@@ -68,29 +68,83 @@ int main()
     
     
     printf("\nBoot\n");
-
-    BatteryLed_Write(1); // Switch led on 
+    
+   
+    //BatteryLed_Write(1); // Switch led on 
     //BatteryLed_Write(0); // Switch led off 
-    //uint8 button;
-    //button = SW1_Read(); // read SW1 on pSoC board
-    // SW1_Read() returns zero when button is pressed
-    // SW1_Read() returns one when button is not pressed
+   
+    
+    bool led = false;
     
     motor_start();
-    /*motor_forward(100,1000);
+    motor_forward(200,1000);
+    
     
     //move motors in opposite directions
-    MotorDirLeft_Write(1);      // set LeftMotor backwards mode
-    MotorDirRight_Write(0);     // set RightMotor forward mode
-    PWM_WriteCompare1(100); 
-    PWM_WriteCompare2(100); 
-    CyDelay(10000);*/
+    /*BatteryLed_Write(1);
+    ShieldLed_Write(1);*/
     
     
-    //motor_turn(-100,256,100);
+   
+       
+    
+    
+    //MotorDirLeft_Write(1);      // set LeftMotor backwards mode
+    //MotorDirRight_Write(0);     // set RightMotor forward mode
+    /*PWM_WriteCompare1(100); 
+    PWM_WriteCompare2(100);*/ 
+    
+    
+    for (int i = 0; i < 40; i++)  // change the duration of the motor
+    {
+        led = !led;
+        BatteryLed_Write(led);
+        ShieldLed_Write(!led);
+        Beep(100, 100);
+        CyDelay(50);        // change the speed of the light 
+    }
+    
+    
     //motor_forward(100,1000);
+    
     motor_stop();
-
+    
+    motor_start();
+    motor_backward(200,1000);
+    
+    
+    
+    //move motors in opposite directions
+    /*BatteryLed_Write(1);
+    ShieldLed_Write(1);*/
+    
+    
+   
+       
+    
+    
+    //MotorDirLeft_Write(1);      // set LeftMotor backwards mode
+    //MotorDirRight_Write(0);     // set RightMotor forward mode
+    /*PWM_WriteCompare1(100); 
+    PWM_WriteCompare2(100);*/ 
+    
+    
+    for (int i = 0; i < 40; i++)  // change the duration of the motor
+    {
+        led = !led;
+        BatteryLed_Write(led);
+        ShieldLed_Write(!led);
+        Beep(100, 100);
+        CyDelay(50);        // change the speed of the light 
+    }
+    
+    
+    //motor_forward(100,1000);
+    
+    motor_stop();
+    BatteryLed_Write(0);
+    ShieldLed_Write(0);
+    
     for(;;)
     {
         
@@ -103,6 +157,8 @@ int main()
             
             // Print both ADC results and converted value
             printf("%d %fV\r\n",adcresult, volts);
+          
+            
         }
         
         if(volts < 4.0){
@@ -117,7 +173,9 @@ int main()
         
     }
     
- }   
+ }
+
+
 #endif
 
 #if 0
