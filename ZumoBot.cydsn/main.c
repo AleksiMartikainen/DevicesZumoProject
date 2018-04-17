@@ -47,7 +47,6 @@
 
 int rread(void);
 
-
 /**
  * @file    main.c
  * @brief   
@@ -65,7 +64,8 @@ void turn()
 
 //#if 1
 //battery level//
-    
+
+
 int main()
 {
     CyGlobalIntEnable; 
@@ -84,8 +84,6 @@ int main()
     unsigned int postion;
     int last_position, last_black;
     
-    
-    
     printf("\nBoot\n");
     
     //BatteryLed_Write(1); // Switch led on 
@@ -94,12 +92,20 @@ int main()
     bool led = false;
     
     reflectance_start();
-    reflectance_set_threshold(9000, 9000, 11000, 11000, 9000, 9000); // set center sensor threshold to 11000 and others to 9000
+    reflectance_set_threshold(5000, 5000, 15000, 15000, 5000, 5000); // set center sensor threshold to 11000 and others to 9000
+    reflectance_read(&ref);
     
+    
+    /*if(ref.r1 >= 15000)
+    {
+        MotorDirRight_Write(0);
+        PWM_WriteCompare2(200);
+        
+    }*/
     //postion = reflectance_read(&ref);
     
     
-    //--------------simple movement and turns to follow line without sensors
+    //--------------Simple movement and turns to follow line without sensors(straight and 90 degree track)
     
    /* motor_forward(100,3300);
     
@@ -127,44 +133,76 @@ int main()
     motor_stop();*/
     
     
-    //----------Reading from the sensors
+    //----------Reading from the sensors following the line
     for(;;)
     {
-       // motor_start();
-        //motor_forward(100,0);
+         //motor_start();
+         //motor_forward(200,0);
        
         // read raw sensor values
-        //reflectance_read(&ref);
-        //printf("%hu %hu %hu %hu %hu %hu\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
+        reflectance_read(&ref);
+        printf("%hu %hu %hu %hu %hu %hu\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
         
         reflectance_digital(&dig);      //print out 0 or 1 according to results of reflectance period
         printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
         
-        /*if(dig.l1 == 1)
+        motor_start();
+        int average_left = (ref.l1 + ref.l2)/2;
+        int average_right = (ref.r1 + ref.r2)/2;
+        int average_mid = (ref.l1 + ref.r1)/2;
+        
+        if(average_left < average_right)
         {
-            last_black = 1;
-            motor_start();
-            motor_forward(200,0);
+            
+            MotorDirLeft_Write(0);     // forward
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(50); 
+            PWM_WriteCompare2(10);
+            CyDelay(0);
+           
         }
         
-        else
-        if(last_black != 1)
+        if(average_left > average_right)
         {
-            motor_turn
-        }*/
+            
+            MotorDirLeft_Write(1);     // forward
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(10); 
+            PWM_WriteCompare2(50);
+            CyDelay(0);
+           
+        }
         
-        if ((dig.l1 == 1 && dig.r1 == 1) /*(dig.r2 ==1 && dig.l2 == 1) || (dig.r2 ==1 && dig.l1 == 1)|| (dig.r1 ==1 && dig.l2 == 1))*/&& (dig.l2 == 0 && dig.l3 == 0 && dig.r2 == 0 && dig.r3 == 0))
+        if(average_mid > average_left || average_mid> average_right)
         {
-            motor_start();
-            MotorDirLeft_Write(0);     
+            
+            MotorDirLeft_Write(0);     // forward
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(50); 
+            PWM_WriteCompare2(50);
+            CyDelay(0);
+           
+        }
+        
+        CyDelay(100);
+        
+        /// using only digital value to follow the line
+        
+        #if 0
+        if ((dig.l1 == 1 && dig.r1 == 1) /*(dig.r2 ==1 && dig.l2 == 1) || (dig.r2 ==1 && dig.l1 == 1)|| (dig.r1 ==1 && dig.l2 == 1))&& (dig.l2 == 0 && dig.l3 == 0 && dig.r2 == 0 && dig.r3 == 0)*/)
+        {
+            
+           /* MotorDirLeft_Write(0);     // forward
             MotorDirRight_Write(0);
             PWM_WriteCompare1(200); 
             PWM_WriteCompare2(200);
-            CyDelay(0);
+            CyDelay(0);*/
+            
+            motor_forward(150,0);
             
         }
-        //#if 0
-        else if (dig.l2 == 0 && dig.r2 == 1)
+        
+        else if (dig.l1 == 0 && dig.r1 == 1)
         {
             
            
@@ -173,30 +211,32 @@ int main()
             PWM_WriteCompare1(200); 
             PWM_WriteCompare2(250);
             CyDelay(0);*/
-            motor_turn(190,0,0);
+            
+            motor_turn(150,0,0);
             
         }
         
-        else if (dig.l2 == 1 && dig.r2 == 0)
+        else if (dig.l1 == 1 && dig.r1 == 0)
         {
             /*MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
             PWM_WriteCompare1(250); 
             PWM_WriteCompare2(200);
             CyDelay(0);*/
-            
-            motor_turn(0,190,0);
+            //int motor_speed = 190;
+            motor_turn(0,150,0);
             
         }
+        //#if 0
         //#endif
         //#if 0
         else if (dig.l3 == 1 )//|| dig.l2 == 1)
         {
-            last_position = 0;
+            last_position = 0;    // remembers the last position as black  
             MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
-            PWM_WriteCompare1(100); 
-            PWM_WriteCompare2(255);
+            PWM_WriteCompare1(50); 
+            PWM_WriteCompare2(200);
             CyDelay(0);
             
              //motor_turn(10,150,0);
@@ -208,13 +248,14 @@ int main()
             last_position = 1;
             MotorDirLeft_Write(0);     
             MotorDirRight_Write(1);
-            PWM_WriteCompare1(255); 
-            PWM_WriteCompare2(100);
+            PWM_WriteCompare1(200); 
+            PWM_WriteCompare2(50);
             CyDelay(0);
             
             //motor_turn(180,5,0);
             
         }
+        
         
         /*else if (dig.l1 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
         {
@@ -236,7 +277,7 @@ int main()
             
             MotorDirLeft_Write(0);     
             MotorDirRight_Write(1);
-            PWM_WriteCompare1(255); 
+            PWM_WriteCompare1(200); 
             PWM_WriteCompare2(100);
             CyDelay(0);
         }
@@ -246,11 +287,12 @@ int main()
             MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
             PWM_WriteCompare1(100); 
-            PWM_WriteCompare2(255);
+            PWM_WriteCompare2(200);
             CyDelay(0);
         }
+        #endif
         
-        /*else if(dig.l3 == 1 && dig.l2== 1 && dig.l1==1 && dig.r1==1 && dig.r2==1 && dig.r3==1)
+       /* else if(dig.l3 == 1 && dig.l2== 1 && dig.l1==1 && dig.r1==1 && dig.r2==1 && dig.r3==1)
         {
             motor_stop();
         
@@ -279,7 +321,7 @@ int main()
         
         }*/
         
-        //motor_stop();
+        
         
         //for errors find proportional constant and derivative
         //
@@ -359,9 +401,6 @@ int main()
     }
 #endif
  }
-
-
-
 
 #if 0
 // button
