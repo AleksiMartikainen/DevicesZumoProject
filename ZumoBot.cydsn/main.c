@@ -451,23 +451,27 @@ int main()
     ADC_Battery_Start(); 
     motor_start();
     reflectance_start();
+    IR_Start();
     
     
     struct sensors_ ref;
     struct sensors_ dig;
     int16 adcresult =0;
     float volts = 0.0;
-    float Kp = 60,Kd = 40, Ki = 0;
+    float Kp = 60,Kd = 6000, Ki = 0;
     
-    int last_error = 0;
-    int max = 24000;
-    int min = 5000;
+    float last_error = 0;
+    int max = 21000;
+    int min = 4000;
     int max_speed =255;
     int last_position;
     float right_speed, left_speed;
     float error_l3,error_l2, error_l1,error_r1,error_r2,error_r3;
     float last_errorl3 = 0, last_errorl2 = 0, last_errorl1 = 0, last_errorr1 = 0, last_errorr2 = 0, last_errorr3 = 0;
-    
+    float last_errorleft, last_errorright, Error, last_errorl, last_errorr;
+    float time = GetTicks(), dt=0;
+    bool led = false;
+    int Check_point = 1;
     /*do {
     
         reflectance_digital(&dig);      //print out 0 or 1 according to results of reflectance period
@@ -478,18 +482,34 @@ int main()
     while((dig.r3 + dig.l3)< 2);*/
        
     
-    /*_wait(); // wait for IR command
+    /*IR_wait(); // wait for IR command
     printf("IR command received\n");*/
+    
+    /*if(SW1_Read() == 0) {
+            motor_start();
+            motor_forward(50,2000);
+            led = !led;
+            BatteryLed_Write(led);
+            ShieldLed_Write(led);
+            if(led) printf("Led is ON\n");
+            else printf("Led is OFF\n");
+            Beep(1000, 150);
+            while(SW1_Read() == 0) CyDelay(10); // wait while button is being pressed
+        }*/
+    
     
     
     //----------Reading from the sensors following the line
     for(;;)
     {
+        
+        
          
         // read raw sensor values
         
         reflectance_read(&ref);
         reflectance_digital(&dig);
+        printf(" dig value %5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
         //printf("%hu %hu %hu %hu %hu %hu\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
         
         error_l3 = scale( ref.l3, min , max);
@@ -499,14 +519,43 @@ int main()
         error_r2 = scale( ref.r2, min , max);
         error_r3 = scale( ref.r3, min , max);
         
+        float error_left = error_l1 + error_l2 + error_l3;
+        float error_right = error_r1 + error_r2 + error_r3;
         
+        
+        Error = error_left -error_right;
+        dt = GetTicks() - time;
+        time = GetTicks();
+        last_errorl = (error_l1 - last_errorl)/dt;
+        last_errorr = (error_r1 - last_errorr)/dt;
+        last_error = (Error - last_error)/dt;
         
         
         printf("%f %f %f %f %f %f\n", error_l3, error_l2, error_l1, error_r1, error_r2, error_r3);       // print out each period of reflectance sensors
-        right_speed = 3.1875*Kp * error_l1 - Kd * (error_l1 - last_errorl1); //+ 3*Kp*l3; //2*Kp * l2 + 3*Kp * l3; to get max speed
-        left_speed = 3.1875*Kp * error_r1 - Kd * (error_r1 - last_errorr1); //+ 3*Kp*r3; //2*Kp*r2; // + Kp * 3*r3;
+        right_speed = (3.1875*Kp * error_l1) + last_errorl * Kd;//(error_l1-last_errorl1)*Kd;// + (3.1875*Kp*error_l2-(error_l2-last_errorl2)*Kd); //+ 3*Kp*l3; //2*Kp * l2 + 3*Kp * l3; to get max speed
+        left_speed = (3.1875*Kp * error_r1)+ last_errorr * Kd;//(error_r1-last_errorr1)*Kd;// + (3.1875*-Kp*error_r2-(error_r2-last_errorr2)*Kd); //+ 3*Kp*r3; //2*Kp*r2; // + Kp * 3*r3;
         
+        /*right_speed = 255 + ((Kp * error_l1) + (Kd * last_errorl));
+        left_speed =  255 - ((Kp * error_r1) + (Kd * last_errorr));
+        
+        if(right_speed > 255) right_speed = 255;
+        if(left_speed > 255) left_speed = 255;
+        if(left_speed < 0)  left_speed = 0;
+        if(right_speed < 0)  right_speed = 0;*/
+        
+        //int speed = left_speed+right_speed;
         printf("\n%f \n%f\n", right_speed, left_speed);
+        
+        
+        
+        last_errorl =error_l1;
+        last_errorr = error_r1;
+        
+        
+        
+        last_errorleft = error_left;
+        last_errorright = error_right;
+        
         
         last_errorl3 = error_l3;
         last_errorl2 = error_l2;
@@ -517,83 +566,122 @@ int main()
         
         
       
-        if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00)
+    /*    if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00)// || (error_l3+error_l2+error_l1+error_r1+error_r2+error_r3)>=5 )
         {
-        motor_go(0,0);
+            if(Check_point ==1 || Check_point == 3)
+            {
+                printf("chk1");
+                motor_go(0,0);
+                Check_point +=1;
+                CyDelay(000);
+                IR_wait(); // wait for IR command
+                printf("IR command received\n");
+                
+            }   else   { 
+                Check_point+=1;
+                printf("else loop counter\n");
+            }
+         
+           }*/
+        if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00){
+        switch (Check_point){
+            case 1: 
+                    printf("case 1\n");
+                    motor_go(0,0);
+                    Check_point+=1;
+                    IR_flush();
+                    IR_wait();
+                    
+                    break;
+             case 2:
+                    printf("case 2\n");
+                    motor_go(left_speed,right_speed);
+                    Check_point+=1;
+                    CyDelay(200);
+                    break;
+            case 3:
+                    printf("case 3\n");
+                    motor_stop();
+                    break;
         }
-              
-       /* else if ( (l1 + r1) < 0.1)
+        }
+        /*else if((dig.l1 + dig.r1)>=2 && (dig.l2 + dig.r2 + dig.l3 + dig.r3)==0)
         {
-        motor_forward(0,0);
+            motor_forward(255,0);
         }*/
         
-        //CyDelay(000);
-        
-        else if((error_l1+ error_r1)>=1) 
+        else if((error_l1+ error_r1)>1)// && (dig.l3 + dig.r3)== 0) 
         {
+            //motor_forward(200,0);
             motor_go(left_speed, right_speed);
         }
        
         //#if 0
-         else if (dig.l3 == 1 )//|| dig.l2 == 1)
+        else if (dig.l3 == 1 && dig.r3 == 0 )//|| dig.l2 == 1)
         {
             last_position = 0;    // remembers the last position as black  
             MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
-            PWM_WriteCompare1(90); // 90
-            PWM_WriteCompare2(200); // 200
+            PWM_WriteCompare1(150); // 90
+            PWM_WriteCompare2(255); // 200
             CyDelay(0);
             
              //motor_turn(10,150,0);
             
         }
         
-        else if (dig.r3 == 1)// || dig.r2 == 1)
+        else if (dig.r3 == 1 && dig.l3 == 0)// || dig.r2 == 1)
         {
             last_position = 1;
             MotorDirLeft_Write(0);     
             MotorDirRight_Write(1);
-            PWM_WriteCompare1(200); 
-            PWM_WriteCompare2(90);
+            PWM_WriteCompare1(255); 
+            PWM_WriteCompare2(150);
             CyDelay(0);
             
             //motor_turn(180,5,0);
             
         }
        
-        
        else if(last_position == 1)
         {
-            printf("\nturning right\n");
+            printf("\nturn left\n");
             MotorDirLeft_Write(0);     
             MotorDirRight_Write(1);
-            PWM_WriteCompare1(200); 
-            PWM_WriteCompare2(90);
+            PWM_WriteCompare1(255); 
+            PWM_WriteCompare2(150);
             CyDelay(0);
         }
         else if(last_position != 1)
         {
-           printf("\nturning left\n");
+            printf("\nturn right\n");
             MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
-            PWM_WriteCompare1(90); 
-            PWM_WriteCompare2(200);
+            PWM_WriteCompare1(150); 
+            PWM_WriteCompare2(255);
             CyDelay(0);
         }
+        //#endif
         
           CyDelay(1);  
         
     }
+    
 }
     
     void motor_go( float left_speed, float right_speed)
     {
+        /*if(left_speed>255)  {left_speed=255;MotorDirLeft_Write(0); }
+        else if(left_speed<0)  { left_speed=0;MotorDirLeft_Write(1); left_speed=left_speed*-1;}
+        if(right_speed>255)  {right_speed=255; MotorDirRight_Write(0);}
+        else if(right_speed<0)   {right_speed=0;MotorDirRight_Write(1); right_speed=right_speed*-1;}*/
         
             MotorDirLeft_Write(0);     // forward
             MotorDirRight_Write(0);
             PWM_WriteCompare1(left_speed); 
             PWM_WriteCompare2(right_speed);
-            printf("\n%f %f\n", left_speed, right_speed);
+            printf("\n%f %f\n", left_speed, right_speed);    // forward
+            
     }
     
     float scale (float val, float min, float max)
