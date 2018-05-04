@@ -459,7 +459,7 @@ int main()
     struct sensors_ dig;
     int16 adcresult =0;
     float volts = 0.0;
-    float Kp = 160,Kd = 1, Ki = 0;
+    float Kp = 80,Kd = 8000, Ki = 0;
     
     float last_error = 0;
     int max = 21000;
@@ -473,39 +473,15 @@ int main()
     float time = GetTicks(), dt=0;
     bool led = false;
     int Check_point = 1;
-    /*do {
-    
-        reflectance_digital(&dig);      //print out 0 or 1 according to results of reflectance period
-        printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
-        motor_forward(50,0);
-        
-    }
-    while((dig.r3 + dig.l3)< 2);*/
-       
-    
-    /*IR_wait(); // wait for IR command
-    printf("IR command received\n");*/
-    
-    /*if(SW1_Read() == 0) {
-            motor_start();
-            motor_forward(50,2000);
-            led = !led;
-            BatteryLed_Write(led);
-            ShieldLed_Write(led);
-            if(led) printf("Led is ON\n");
-            else printf("Led is OFF\n");
-            Beep(1000, 150);
-            while(SW1_Read() == 0) CyDelay(10); // wait while button is being pressed
-        }*/
     
     
-    
-    //----------Reading from the sensors following the line
     for(;;)
     {
         
+        /////..................Line follower.........................
         
-         #if 0
+        
+         //#if 0
         // read raw sensor values
         
         reflectance_read(&ref);
@@ -520,20 +496,23 @@ int main()
         error_r2 = scale( ref.r2, min , max);
         error_r3 = scale( ref.r3, min , max);
         
-        float error_left = error_l1 + error_l2 + error_l3;
-        float error_right = error_r1 + error_r2 + error_r3;
+        /*float error_left = error_l1 + error_l2 + error_l3;
+        float error_right = error_r1 + error_r2 + error_r3;*/
         
         
-        Error = error_left -error_right;
+        //Error = error_left -error_right;
         dt = GetTicks() - time;
         
         last_errorl = (error_l1 - last_errorl)/dt;
         last_errorr = (error_r1 - last_errorr)/dt;
-        last_error = (Error - last_error)/dt;
+        //last_error = (Error - last_error)/dt;
         time = GetTicks();
         
         
         printf("%f %f %f %f %f %f\n", error_l3, error_l2, error_l1, error_r1, error_r2, error_r3);       // print out each period of reflectance sensors
+        
+        // calculating the speed for the motors
+        
         right_speed = (3.1875*Kp * error_l1) + last_errorl * Kd;//(error_l1-last_errorl1)*Kd;// + (3.1875*Kp*error_l2-(error_l2-last_errorl2)*Kd); //+ 3*Kp*l3; //2*Kp * l2 + 3*Kp * l3; to get max speed
         left_speed = (3.1875*Kp * error_r1)+ last_errorr * Kd;//(error_r1-last_errorr1)*Kd;// + (3.1875*-Kp*error_r2-(error_r2-last_errorr2)*Kd); //+ 3*Kp*r3; //2*Kp*r2; // + Kp * 3*r3;
         
@@ -549,90 +528,72 @@ int main()
         if(left_speed < 0)  left_speed = 0;
         if(right_speed < 0)  right_speed = 0;*/
         
-        //int speed = left_speed+right_speed;
         printf("\n%f \n%f\n", right_speed, left_speed);
-        
-        
         
         last_errorl =error_l1;
         last_errorr = error_r1;
         
-        
-        
-        last_errorleft = error_left;
+        /*last_errorleft = error_left;
         last_errorright = error_right;
-        
         
         last_errorl3 = error_l3;
         last_errorl2 = error_l2;
         last_errorl1 = error_l1;
         last_errorr1 = error_r1;
         last_errorr2 = error_r2;
-        last_errorr3 = error_r3;
+        last_errorr3 = error_r3;*/
+       
+        //............ checkpoints ......................
         
-        
-      
-    /*    if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00)// || (error_l3+error_l2+error_l1+error_r1+error_r2+error_r3)>=5 )
-        {
-            if(Check_point ==1 || Check_point == 3)
-            {
-                printf("chk1");
-                motor_go(0,0);
-                Check_point +=1;
-                CyDelay(000);
-                IR_wait(); // wait for IR command
-                printf("IR command received\n");
-                
-            }   else   { 
-                Check_point+=1;
-                printf("else loop counter\n");
-            }
-         
-           }*/
-        if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00){
+        if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00){ 
         switch (Check_point){
+            
+            // stopping and waiting in the first black line
             case 1: 
                     printf("case 1\n");
                     motor_go(0,0);
                     Check_point+=1;
                     IR_flush();
-                    IR_wait();
+                    IR_wait();              
                     
                     break;
+                    
+            // avoiding stop in the second line
              case 2:
                     printf("case 2\n");
                     motor_go(left_speed,right_speed);
                     Check_point+=1;
                     CyDelay(200);
                     break;
+                    
+            // stopping in the third line
+                    
             case 3:
                     printf("case 3\n");
                     motor_stop();
                     break;
         }
         }
-        /*else if((dig.l1 + dig.r1)>=2 && (dig.l2 + dig.r2 + dig.l3 + dig.r3)==0)
-        {
-            motor_forward(255,0);
-        }*/
         
-        else if((error_l1+ error_r1)>0.7)// && (dig.l3 + dig.r3)== 0) 
+        // follow the line with calculated motor speeds
+        
+        else if((error_l1+ error_r1)>0.7)
         {
-            //motor_forward(200,0);
             motor_go(left_speed, right_speed);
         }
        
         //#if 0
-        else if (dig.l3 == 1 && dig.r3 == 0 )//|| dig.l2 == 1)
+        
+        // for tight turns, memory 
+        
+        else if (dig.l3 == 1 && dig.r3 == 0 )
         {
             last_position = 0;    // remembers the last position as black  
             MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
-            PWM_WriteCompare1(100); // 90
-            PWM_WriteCompare2(255); // 200
+            PWM_WriteCompare1(100); 
+            PWM_WriteCompare2(255); 
             CyDelay(0);
-            
-             //motor_turn(10,150,0);
             
         }
         
@@ -644,8 +605,6 @@ int main()
             PWM_WriteCompare1(255); 
             PWM_WriteCompare2(100);
             CyDelay(0);
-            
-            //motor_turn(180,5,0);
             
         }
        
@@ -667,12 +626,12 @@ int main()
             PWM_WriteCompare2(255);
             CyDelay(0);
         }
-        #endif
+        //#endif
         
           CyDelay(1);  
         
         /////////////////////sumo ................
-        
+        #if 0
         reflectance_digital(&dig);
         printf(" dig value %5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
         
@@ -680,6 +639,19 @@ int main()
         //If you want to print out the value  
         printf("distance = %f\r\n", d);
         
+        if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00){
+        switch (Check_point){
+            case 1: 
+                    printf("case 1\n");
+                    motor_go(0,0);
+                    Check_point+=1;
+                    IR_flush();
+                    IR_wait();
+                    
+                    break;
+            
+        }
+        }
         
          if((dig.l3 + dig.r3)> 1.2)
         {
@@ -732,6 +704,7 @@ int main()
         
         CyDelay(200);
     }*/
+        #endif
         
     }
     
@@ -739,10 +712,6 @@ int main()
     
     void motor_go( float left_speed, float right_speed)
     {
-        /*if(left_speed>255)  {left_speed=255;MotorDirLeft_Write(0); }
-        else if(left_speed<0)  { left_speed=0;MotorDirLeft_Write(1); left_speed=left_speed*-1;}
-        if(right_speed>255)  {right_speed=255; MotorDirRight_Write(0);}
-        else if(right_speed<0)   {right_speed=0;MotorDirRight_Write(1); right_speed=right_speed*-1;}*/
         
             MotorDirLeft_Write(0);     // forward
             MotorDirRight_Write(0);
@@ -751,6 +720,8 @@ int main()
             printf("\n%f %f\n", left_speed, right_speed);    // forward
             
     }
+    
+    //  converting error values from raw reflectance reading to readings(errors) between 0 and 1
     
     float scale (float val, float min, float max)
     {
