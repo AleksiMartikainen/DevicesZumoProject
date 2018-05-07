@@ -441,7 +441,7 @@ int main()
 #if 1
     /// PD controller
     
-    void motor_go( float left_speed, float right_speed);
+    void motor_go( float left_speed, float right_speed);   // declaration of the function
     float scale (float val, float min, float max);
 int main()
 {
@@ -459,19 +459,16 @@ int main()
     struct sensors_ dig;
     int16 adcresult =0;
     float volts = 0.0;
-    float Kp = 80,Kd = 8000, Ki = 0;
+    float Kp = 60,Kd = 10;
     
-    float last_error = 0;
     int max = 21000;
     int min = 4000;
-    int max_speed =255;
     int last_position;
     float right_speed, left_speed;
     float error_l3,error_l2, error_l1,error_r1,error_r2,error_r3;
     float last_errorl3 = 0, last_errorl2 = 0, last_errorl1 = 0, last_errorr1 = 0, last_errorr2 = 0, last_errorr3 = 0;
     float last_errorleft, last_errorright, Error, last_errorl, last_errorr;
     float time = GetTicks(), dt=0;
-    bool led = false;
     int Check_point = 1;
     
     
@@ -481,13 +478,13 @@ int main()
         /////..................Line follower.........................
         
         
-         //#if 0
+        // #if 0
         // read raw sensor values
         
         reflectance_read(&ref);
         reflectance_digital(&dig);
         printf(" dig value %5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
-        //printf("%hu %hu %hu %hu %hu %hu\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
+        printf("%hu %hu %hu %hu %hu %hu\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
         
         error_l3 = scale( ref.l3, min , max);
         error_l2 = scale( ref.l2, min , max);
@@ -496,53 +493,31 @@ int main()
         error_r2 = scale( ref.r2, min , max);
         error_r3 = scale( ref.r3, min , max);
         
-        /*float error_left = error_l1 + error_l2 + error_l3;
-        float error_right = error_r1 + error_r2 + error_r3;*/
         
-        
-        //Error = error_left -error_right;
         dt = GetTicks() - time;
         
         last_errorl = (error_l1 - last_errorl)/dt;
         last_errorr = (error_r1 - last_errorr)/dt;
-        //last_error = (Error - last_error)/dt;
+        printf("%f \n", last_errorl);
         time = GetTicks();
-        
         
         printf("%f %f %f %f %f %f\n", error_l3, error_l2, error_l1, error_r1, error_r2, error_r3);       // print out each period of reflectance sensors
         
         // calculating the speed for the motors
         
-        right_speed = (3.1875*Kp * error_l1) + last_errorl * Kd;//(error_l1-last_errorl1)*Kd;// + (3.1875*Kp*error_l2-(error_l2-last_errorl2)*Kd); //+ 3*Kp*l3; //2*Kp * l2 + 3*Kp * l3; to get max speed
-        left_speed = (3.1875*Kp * error_r1)+ last_errorr * Kd;//(error_r1-last_errorr1)*Kd;// + (3.1875*-Kp*error_r2-(error_r2-last_errorr2)*Kd); //+ 3*Kp*r3; //2*Kp*r2; // + Kp * 3*r3;
+        right_speed = (3.1875*Kp * error_l1) + last_errorl * Kd;   // to get max speed
+        left_speed = (3.1875*Kp * error_r1)+ last_errorr * Kd;
         
         if(right_speed > 255) right_speed = 255;
         if(left_speed > 255) left_speed = 255;
         if(left_speed < 0)  left_speed = 0;
         if(right_speed < 0)  right_speed = 0;
-        /*right_speed = 255 + ((Kp * error_l1) + (Kd * last_errorl));
-        left_speed =  255 - ((Kp * error_r1) + (Kd * last_errorr));
-        
-        if(right_speed > 255) right_speed = 255;
-        if(left_speed > 255) left_speed = 255;
-        if(left_speed < 0)  left_speed = 0;
-        if(right_speed < 0)  right_speed = 0;*/
         
         printf("\n%f \n%f\n", right_speed, left_speed);
         
         last_errorl =error_l1;
         last_errorr = error_r1;
         
-        /*last_errorleft = error_left;
-        last_errorright = error_right;
-        
-        last_errorl3 = error_l3;
-        last_errorl2 = error_l2;
-        last_errorl1 = error_l1;
-        last_errorr1 = error_r1;
-        last_errorr2 = error_r2;
-        last_errorr3 = error_r3;*/
-       
         //............ checkpoints ......................
         
         if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00){ 
@@ -577,7 +552,7 @@ int main()
         
         // follow the line with calculated motor speeds
         
-        else if((error_l1+ error_r1)>0.7)
+        else if((error_l1+ error_r1)>0.6)
         {
             motor_go(left_speed, right_speed);
         }
@@ -626,12 +601,13 @@ int main()
             PWM_WriteCompare2(255);
             CyDelay(0);
         }
-        //#endif
+        #endif
         
           CyDelay(1);  
         
+        
         /////////////////////sumo ................
-        #if 0
+        //#if 0
         reflectance_digital(&dig);
         printf(" dig value %5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
         
@@ -639,7 +615,8 @@ int main()
         //If you want to print out the value  
         printf("distance = %f\r\n", d);
         
-        if((error_l3+error_l2+error_l1+error_r1+error_r2+error_r3) == 6.00){
+        
+        if((dig.l3 + dig.l2 + dig.l1 + dig.r1 + dig.r2 +dig.r3) == 6.00){
         switch (Check_point){
             case 1: 
                     printf("case 1\n");
@@ -649,11 +626,17 @@ int main()
                     IR_wait();
                     
                     break;
+                    
+            case 2:
+                    motor_forward(200,100);
+                    break;
             
         }
         }
         
-         if((dig.l3 + dig.r3)> 1.2)
+        
+        
+         else if((dig.l3 + dig.r3)> 1.2)
         {
             MotorDirLeft_Write(1);     
             MotorDirRight_Write(0);
@@ -665,12 +648,12 @@ int main()
         
         }
         
-         else if((dig.l3 == 0 && dig.r3 == 0) && d > 15)
+         else if((dig.l3 == 0 && dig.r3 == 0) && d> 100)
         {
             MotorDirLeft_Write(0);     
             MotorDirRight_Write(0);
-            PWM_WriteCompare1(150); 
-            PWM_WriteCompare2(105);
+            PWM_WriteCompare1(255); 
+            PWM_WriteCompare2(200);
             CyDelay(0);
         }
         
@@ -693,18 +676,20 @@ int main()
             CyDelay(300);
             motor_forward(200,100);
         }
-        if(d < 15){
+        else if((dig.l3 == 0 && dig.r3 == 0) && d < 100){
             motor_forward(255,0);
         }
+        printf("distance = %f\r\n", d);
+        
         
         /*while(1) {
-        int d = Ultra_GetDistance();
+        int d = Ultra_GetDistance(); 
         //If you want to print out the value  
         printf("distance = %d\r\n", d);
         
         CyDelay(200);
     }*/
-        #endif
+        //#endif
         
     }
     
